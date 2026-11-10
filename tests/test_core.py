@@ -9,9 +9,10 @@ class CoreTests(unittest.TestCase):
     def test_dlt_validation(self):
         r = validate_record("dlt", {"issue":"1","front":"01 05 12 23 34","back":"02 11"})
         self.assertEqual(r["front"], "01 05 12 23 34")
-    def test_pool_hard_constraint(self):
-        rows = [{"issue":str(i),"d1":"01","d2":"02","d3":"03"} for i in range(30,0,-1)]
-        c = build_candidate("pl3", rows, 20, {"百位":"7 8","十位":"4 5","个位":"9"})
+    def test_candidate_frequency_ranking_full_range(self):
+        rows = [{"issue":str(i),"d1":"07","d2":"04","d3":"09"} for i in range(30,15,-1)]
+        rows += [{"issue":str(i),"d1":"01","d2":"02","d3":"03"} for i in range(15,10,-1)]
+        c = build_candidate("pl3", rows, 20)
         self.assertEqual(c["fields"]["d1"], "07")
         self.assertEqual(c["fields"]["d2"], "04")
         self.assertEqual(c["fields"]["d3"], "09")
