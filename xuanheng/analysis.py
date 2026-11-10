@@ -41,31 +41,22 @@ def analyze_game(game, records, window=100):
             }
     return {"position_frequency":freq, "omissions":omissions, "structure":structure, "window":len(recent)}
 
-def _parse_pool(raw, lo, hi):
-    if not raw.strip():
-        return list(range(lo,hi+1))
-    vals = sorted(set(int(x) for x in raw.replace(",", " ").split()))
-    if not vals or any(x<lo or x>hi for x in vals):
-        raise ValueError(f"号码池必须在 {lo}–{hi} 范围内")
-    return vals
-
-def build_candidate(game, records, window=100, pools=None):
+def build_candidate(game, records, window=100):
     if not records:
         return {"error":"没有历史数据"}
-    pools = pools or {}
     fields = GAMES[game]["fields"]
     recent = records[:window]
     selected = {}
     explanation = []
     for f in fields:
-        allowed = _parse_pool(pools.get(f["label"], ""), f["min"], f["max"])
+        allowed = list(range(f["min"], f["max"]+1))
         vals = _all_position_values(game, recent, f)
         counts = Counter(vals)
         # Smoothed descriptive ranking only; frequency is not a probability forecast.
         ranked = sorted(allowed, key=lambda n:(counts.get(n,0), -n), reverse=True)
         selected[f["key"]] = ranked
         explanation.append(f"{f['label']}候选排序：{' '.join(map(str, ranked[:5]))}")
-    # A single transparent line: choose top-ranked values; multi-number pools choose top count.
+    # A single transparent line: choose top-ranked values; multi-number fields choose top count.
     result = {}
     for f in fields:
         n = f["count"]
