@@ -6,7 +6,7 @@ from pathlib import Path
 from xuanheng.games import GAMES, validate_record, template_columns
 from xuanheng.storage import init_db, upsert_records, load_records, count_records
 from xuanheng.ingest import parse_csv, export_records
-from xuanheng.analysis import analyze_game, build_candidate
+from xuanheng.analysis import analyze_game, build_candidate, bias_report
 
 st.set_page_config(page_title="玄衡 · 易数数字彩", page_icon="☯", layout="wide")
 init_db()
@@ -21,7 +21,7 @@ with st.sidebar:
     st.caption("本地运行 · SQLite 数据库")
     st.caption("统计结果不代表未来开奖概率。")
 
-tabs = st.tabs(["走势分析", "号码筛选", "数据管理", "易数笔记", "项目说明"])
+tabs = st.tabs(["走势分析", "号码筛选", "数据管理", "易数笔记", "项目说明", "偏差检测"])
 
 with tabs[0]:
     records = load_records(game)
@@ -110,3 +110,31 @@ with tabs[4]:
     - 排列三与排列五联动时，排五前三位严格沿用排三候选。
     """)
     st.caption("请理性参与彩票活动。任何历史统计都不能消除随机性。")
+
+with tabs[5]:
+    records = load_records(game)
+    st.subheader("偏差检测")
+    st.caption("检验这段样本是否与均匀随机一致。显著偏离只说明这段样本里不均匀，不等于能预测下一期；不显著也不证明绝对均匀。")
+    window = st.slider("检测窗口（期数）", 20, 500, 500, 10, key="bias_window")
+    if st.button("开始检测", type="primary", disabled=not records):
+        report = bias_report(game, records, window)
+        if report.get("error"):
+            st.error(report["error"])
+        else:
+            st.write(f"检测窗口：最近 {report['window']} 期")
+            table = pd.DataFrame([{
+                "位置": p["label"],
+                "样本量": p["n"],
+                "期望频数": p["expected"],
+                "卡方值": p["chi2"],
+                "卡方 p 值": p["chi2_p"],
+                "游程 Z": p["runs_z"],
+                "游程 p 值": p["runs_p"],
+                "结论": p["conclusion"] + ("（" + p["runs_flag"] + "）" if p["runs_flag"] else ""),
+            } for p in report["positions"]])
+            st.dataframe(table, use_container_width=True, hide_index=True)
+            for note in report["notes"]:
+                st.caption(note)
+            st.download_button("下载检测报告 JSON", json.dumps(report, ensure_ascii=False, indent=2), file_name=f"{game}_bias_report.json")
+    if not records:
+        st.info("请先导入历史数据。")
