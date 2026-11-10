@@ -12,7 +12,7 @@ st.set_page_config(page_title="玄衡 · 易数数字彩", page_icon="☯", layo
 init_db()
 
 st.title("☯ 玄衡 · 易数数字彩分析系统")
-st.caption("历史数据整理 · 位置统计 · 号码池筛选 · 透明候选生成")
+st.caption("历史数据整理 · 位置统计 · 透明候选生成")
 
 with st.sidebar:
     st.subheader("玩法")
@@ -48,21 +48,11 @@ with tabs[0]:
 
 with tabs[1]:
     records = load_records(game)
-    st.subheader("按位置号码池筛选")
-    st.caption("每个位置可分别填写允许数字；留空表示该位置不限制。")
-    specs = GAMES[game]["fields"]
-    pools = {}
-    cols = st.columns(min(5, len(specs)))
-    for i, field in enumerate(specs):
-        with cols[i % len(cols)]:
-            pools[field["label"]] = st.text_input(
-                f"{field['label']}号码池",
-                placeholder=f"例如：{' '.join(map(str, range(field['min'], min(field['max']+1, field['min']+6))))}",
-                key=f"pool_{game}_{i}"
-            )
+    st.subheader("按近期统计生成候选")
+    st.caption("候选按各位置近期频数排序直接生成，不依赖人工指定范围。")
     window = st.slider("参考近期窗口", 20, 500, 100, 10, key="candidate_window")
     if st.button("生成一组参考候选", type="primary", disabled=not records):
-        candidate = build_candidate(game, records, window, pools)
+        candidate = build_candidate(game, records, window)
         if candidate.get("error"):
             st.error(candidate["error"])
         else:
